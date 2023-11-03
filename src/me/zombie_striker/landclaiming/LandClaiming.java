@@ -64,11 +64,15 @@ public class LandClaiming extends JavaPlugin {
 	private boolean save = false;
 
 	public Object a(String path, Object o) {
-		if (getConfig().contains(path))
-			return getConfig().get(path);
-		getConfig().set(path, o);
-		save = true;
-		return o;
+		config = getConfig();
+		if (config.contains(path))
+			return config.get(path);
+		ConfigurationSection maxclaimedblocksDEFAULT = config.getConfigurationSecrtion("maxclaimedblocksDEFAULT")
+		if (maxclaimedblocksDEFAULT != null) {
+			getConfig().set(path, o);
+			save = true;
+			return o;	
+		}
 	}
 
 	@SuppressWarnings("unchecked")
