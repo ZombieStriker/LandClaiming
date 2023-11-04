@@ -1,8 +1,0 @@
-/**
- * 
- */
-/**
- * 
- */
-module landclaiming_new {
-}
