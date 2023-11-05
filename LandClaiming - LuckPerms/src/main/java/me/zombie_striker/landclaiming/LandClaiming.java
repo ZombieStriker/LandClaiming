@@ -1,7 +1,12 @@
 package me.zombie_striker.landclaiming;
 
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -16,7 +21,7 @@ import me.zombie_striker.landclaiming.claimedobjects.ClaimedLand;
 import me.zombie_striker.landclaiming.commands.ClaimCommand;
 import me.zombie_striker.landclaiming.commands.LockCommand;
 import me.zombie_striker.landclaiming.commands.UnclaimCommand;
-
+import me.zombie_striker.landclaiming.commands.LandClaimCommand;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 import net.luckperms.api.model.group.Group;
@@ -44,6 +49,7 @@ public class LandClaiming extends JavaPlugin {
 	public final String MAXCLAIMINT = "landclaiming.options.maxclaimedblocks";
 	public final String MAXCLAIMINT2 = "landclaiming.options.maxclaimedblocksDEFAULT";
 	public final String PERMISSION = "landclaiming.message.permission";
+	public final String ISLUCKPERMS = "landclaiming.option.isluckperms";
 
 	public final String ADDGUEST = "landclaiming.message.addguest";
 	public final String REMOVEGUEST = "landclaiming.message.removeguest";
@@ -83,8 +89,8 @@ public class LandClaiming extends JavaPlugin {
 		//check to see if config already exists or not before overwriting it
 		if (getConfig().getKeys(true).size() == 0 )
 		{
-			// If config file already exists. 
-			Bukkit.getConsoleSender().sendMessage("[LandClaim] " + ChatColor.BLUE + "Could not find config file for LandClaiming. Creating new one. " );
+			// If config file doesnt exists. 
+			Bukkit.getConsoleSender().sendMessage("[LandClaiming] " + ChatColor.BLUE + "Could not find config file for LandClaiming. Creating new one. " );
 			config.addDefault("landclaiming.message.permission", "&4 You do not have permission to complete this action.");
 
 			config.addDefault("landclaiming.message.interactblock",
@@ -104,29 +110,42 @@ public class LandClaiming extends JavaPlugin {
 			config.addDefault("landclaiming.message.unclaimland", "&c You have unlcaimed %name%");
 			config.addDefault("landclaiming.message.claimcorner", "&c You claimed this corner at %x% and %z%");
 			config.addDefault("landclaiming.message.notclaim", "&c You cannot claimed this land. There is already land claimed in this region.");
-			config.addDefault(MAXCLAIM,"&c You have claimed too many blocks! The max amount of blocks are %maxblocks%, and you currently have claimed &cblocks& blocks.");
-				
+			config.addDefault(MAXCLAIM,"&c You have claimed too many blocks! The max amount of blocks are %maxblocks%, and you currently have claimed %cblocks% blocks.");
+			config.addDefault("landclaiming.option.isluckperms", "False");
+			config.addDefault(MAXCLAIMINT + ".group.Default", 5000);
+			config.addDefault(MAXCLAIMINT + ".group.Member", 10000);
+			config.addDefault(MAXCLAIMINT + ".group.op", -1);	
+			config.addDefault(MAXCLAIMINT2, 500);
+			
 			ENABLEINTERACTABLEBLOCKS = (boolean) a(iwc,false);
 			interactAbleMaterials = (List<String>) a(iwce,interactAbleMaterials);
 			config.options().copyDefaults(true);
-			
-			// LuckPerms - Grab list of groups to add into configuation file
-			LuckPerms api = LuckPermsProvider.get();
-			api.getGroupManager().loadAllGroups();
-			Set<Group> groups = api.getGroupManager().getLoadedGroups();
-			for(Iterator<Group> currGroup = groups.iterator(); currGroup.hasNext(); ){
-				Group group = currGroup.next();
-				String groupName = group.getName();
-				String groupValue = ".group." + groupName;
-				config.addDefault(MAXCLAIMINT + groupValue, 5000);
-			}
+		
 		}
-		// if Config file already exists, skip editing
-		else
-			Bukkit.getConsoleSender().sendMessage("[LandClaim] " + ChatColor.GREEN + "Config file found! Skipping creating new config" );
+		// if Config file already exists, skip full rewirte
+		else {
+			Bukkit.getConsoleSender().sendMessage("[LandClaiming] " + ChatColor.GREEN + "Config file found! Skipping creating new config" );
+			Bukkit.getConsoleSender().sendMessage("[LandClaiming] " + ChatColor.BLUE+ "Checking if Luckperms flag is enabled" );
+			switch(getLuckPermsStatus()) {
+				case "true":
+					Bukkit.getConsoleSender().sendMessage("[LandClaiming] " + ChatColor.BLUE+ "LuckPerms Flag set to True, Updating groups in config." );
+					luckPermsConfigUpdate();
+					break;
+				case "false":
+					Bukkit.getConsoleSender().sendMessage("[LandClaiming] " + ChatColor.BLUE+ "LuckPerms Flag set to False, skipping updates for groups." );
+					break;
+				default:
+					config.set("landclaiming.option.isluckperms", "False");
+					Bukkit.getConsoleSender().sendMessage("[LandClaiming] " + ChatColor.BLUE+ "LuckPerms Flag not found. Setting it to False in Config file." );
+					break;
+				}
+		}
 		saveConfig();
 		for (String g : getConfig().getConfigurationSection(MAXCLAIMINT + ".group").getKeys(false)) {
-			maxLands.put(g, getConfig().getInt(MAXCLAIMINT + ".group." + g));
+			if (getLuckPermsStatus().equals("true"))
+				maxLands.put(g, getConfig().getInt(MAXCLAIMINT + ".lpgroup." + g));
+			else	
+				maxLands.put(g, getConfig().getInt(MAXCLAIMINT + ".group." + g));
 		}
 
 		if (getConfig().contains("landclaiming.claimed"))
@@ -146,6 +165,7 @@ public class LandClaiming extends JavaPlugin {
 		LockCommand lc = new LockCommand(this);
 		ClaimCommand cc = new ClaimCommand(this);
 		UnclaimCommand uc = new UnclaimCommand(this);
+		LandClaimCommand landClaim = new LandClaimCommand(this);
 
 		this.getCommand("lock").setExecutor(lc);
 		this.getCommand("unlock").setExecutor(lc);
@@ -156,6 +176,9 @@ public class LandClaiming extends JavaPlugin {
 
 		this.getCommand("claim").setTabCompleter(cc);
 		this.getCommand("unclaim").setTabCompleter(uc);
+		
+		this.getCommand("landClaim").setExecutor(landClaim);
+		this.getCommand("landClaim").setTabCompleter(landClaim);
 
 
 		if (Bukkit.getPluginManager().getPlugin("PluginConstructorAPI") == null)
@@ -249,12 +272,64 @@ public class LandClaiming extends JavaPlugin {
 		}
 		return null;
 	}
+	// Luckperms - Gets player's group as a string using name
 	public String getPlayerLuckPermsGroup(String name) {
-		// Luckperms - Gets player's group as a string using name
 		String playerGroup;
 		LuckPerms api = LuckPermsProvider.get();
 		User currPlayer = api.getUserManager().getUser(name);
 		playerGroup = currPlayer.getPrimaryGroup();
 		return playerGroup;
+	}
+	// LuckPerms - Grab list of groups to add into configuation file
+	public void luckPermsConfigSetup(boolean existingConfig) {
+		LuckPerms api = LuckPermsProvider.get();
+		api.getGroupManager().loadAllGroups();
+		Set<Group> groups = api.getGroupManager().getLoadedGroups();
+		for(Iterator<Group> currGroup = groups.iterator(); currGroup.hasNext(); ){
+			Group group = currGroup.next();
+			String groupName = group.getName();
+			String groupValue = ".lpgroup." + groupName;
+			if (existingConfig)
+				getConfig().set(MAXCLAIMINT + groupValue, 500);
+			else
+				config.addDefault(MAXCLAIMINT + groupValue, 500);
+		}
+	}
+	// check to see if groups are null before starting
+	public void luckPermsConfigUpdate() {
+		if (getConfig().getConfigurationSection(MAXCLAIMINT + ".lpgroup") == null){
+			Bukkit.getConsoleSender().sendMessage("[LandClaiming] " + ChatColor.BLUE + "No groups defined in config. Creating LuckPerms groups");
+			luckPermsConfigSetup(true);
+			save();
+			return;
+		}
+		// LuckPerms - add any missing groups into existing config file
+		LuckPerms api = LuckPermsProvider.get();
+		api.getGroupManager().loadAllGroups();
+		Set<Group> groups = api.getGroupManager().getLoadedGroups();
+		for (Iterator<Group> currLPGroup = groups.iterator(); currLPGroup.hasNext();)
+		{
+			for(String currGroup : getConfig().getConfigurationSection(MAXCLAIMINT + ".lpgroup").getKeys(false)){
+				Group group = currLPGroup.next();
+				String groupName = group.getName();
+				if (!(groupName.equals(currGroup))) {
+					String groupValue = ".lpgroup." + groupName;
+					getConfig().set(MAXCLAIMINT + groupValue, 500);
+				}
+				else
+					Bukkit.getConsoleSender().sendMessage("[LandClaiming] " + ChatColor.BLUE + "Skipping over existing group" + groupName );
+			}
+		}
+		Bukkit.getConsoleSender().sendMessage("[LandClaiming] " + ChatColor.BLUE+ "Luckperms groups updated in config" );
+		return;
+	}
+	public Set<Group> getLuckPermsGroups(){
+		LuckPerms api = LuckPermsProvider.get();
+		api.getGroupManager().loadAllGroups();
+		Set<Group> groups = api.getGroupManager().getLoadedGroups();
+		return groups;
+	}
+	public String getLuckPermsStatus() {
+		return (getConfig().getString("landclaiming.option.isluckperms")).toLowerCase();
 	}
 }

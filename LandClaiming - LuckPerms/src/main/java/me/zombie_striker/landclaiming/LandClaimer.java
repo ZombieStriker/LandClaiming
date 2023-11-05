@@ -44,7 +44,7 @@ public class LandClaimer implements Listener {
 	}
 
 	public LandClaimer(LandClaiming lc) {
-		plugin = lc;
+		this.plugin = lc;
 	}
 
 	@EventHandler
@@ -211,29 +211,39 @@ public class LandClaimer implements Listener {
 					int lands = plugin.getConfig().getInt(plugin.MAXCLAIMINT2);
 					
 					// queries luckperms for player group info (primary group only)
-					String playerName = e.getPlayer().getName();
-					String playerGroup = "" + plugin.getPlayerLuckPermsGroup(playerName);
-					String key = "";
-					int value = 0;
-					for (Entry<String, Integer> ent : plugin.maxLands.entrySet()) {
-						key = ent.getKey();
-						value = ent.getValue();
-						if (key.equals(playerGroup)) {
-							if (value < 0) {
-								lands = Integer.MAX_VALUE;
+					if (plugin.getLuckPermsStatus().equals("true")) {
+						String playerName = e.getPlayer().getName();
+						String playerGroup = "" + plugin.getPlayerLuckPermsGroup(playerName);
+						String key = "";
+						int value = 0;
+						for (Entry<String, Integer> ent : plugin.maxLands.entrySet()) {
+							key = ent.getKey();
+							value = ent.getValue();
+							if (key.equals(playerGroup)) {
+								if (value < 0) {
+									lands = Integer.MAX_VALUE;
+								}
+								else
+									lands = value;
 							}
-							else
-								lands = value;
-						break;	
 						}
 					}
-
+					else {
+						for (Entry<String, Integer> ent : plugin.maxLands.entrySet()) {
+							if (e.getPlayer().hasPermission(ent.getKey())) {
+								if (ent.getValue() < 0)
+									lands = Integer.MAX_VALUE;
+								else
+									lands = ent.getValue();
+							}
+						}
+					}
 					if (plugin.getTotalClaimedBlocks(e.getPlayer().getUniqueId())
 							+ ((xmax - xmin) * (zmax - zmin)) > lands) {
 						e.getPlayer()
 								.sendMessage(plugin.PREFIX + (plugin.getMessage(plugin.MAXCLAIM)
-										.replace("%maxblocks%", lands + "").replace("cblocks",
-												plugin.getTotalClaimedBlocks(e.getPlayer().getUniqueId()) + "")));
+										.replace("%maxblocks%", lands + "").replace("%cblocks%",
+												(Integer.valueOf(plugin.getTotalClaimedBlocks(e.getPlayer().getUniqueId()) + "").toString()))));
 						claimingMode.remove(e.getPlayer().getUniqueId());
 						firstBlock.remove(e.getPlayer().getUniqueId());
 						return;
