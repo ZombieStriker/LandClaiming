@@ -1,7 +1,8 @@
 main: me.zombie_striker.landclaiming.LandClaiming
-version: 1.2.2
+version: 1.2.3
 name: LandClaiming
-api-version: 1.20.2-R0.1-SNAPSHOT
+api-version: 1.13
+softdepend: [LuckPerms]
 commands:
    claim:
       description: Claims land
@@ -11,6 +12,8 @@ commands:
       description: Locks blocks
    unlock:
       description: Unlocks blocks
+   landClaim:
+      description: LandClaim Management
 author:
    Zombie_Striker
 permissions:
