@@ -1,5 +1,5 @@
 # LandClaiming
-Update for LandClaiming plugin. The release is now a single release for both base and LuckPerms integration.
+Update v1.5.1  for LandClaiming plugin. The release is now a single release for both base and LuckPerms integration.
 
 Visit https://dev.bukkit.org/projects/landclaiming for more information around the base plugin.
 
