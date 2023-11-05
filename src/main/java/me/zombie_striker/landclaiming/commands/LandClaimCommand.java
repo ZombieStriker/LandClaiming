@@ -116,7 +116,7 @@ public class LandClaimCommand implements CommandExecutor, TabCompleter {
 		sender.sendMessage(plugin.PREFIX + " /unclaim <?, help>" + ChatColor.WHITE + " // shows help related to unclaiming land process");
 		sender.sendMessage(plugin.PREFIX + " /landClaim setGroupLimit <groupame> <limit>" + ChatColor.WHITE 
 				+" // Updates maximum amount of blocks a group can claim");
-		sender.sendMessage(plugin.PREFIX + " /landClaim GroupLimit <groupame>" + ChatColor.WHITE 
+		sender.sendMessage(plugin.PREFIX + " /landClaim getGroupLimit <groupame>" + ChatColor.WHITE 
 				+" // Shows current limit for a selected group");
 		sender.sendMessage(plugin.PREFIX + " /landClaim help" + ChatColor.WHITE + " // shows this help menu");
 	}
